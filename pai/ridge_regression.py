@@ -11,7 +11,7 @@ class RidgeRegression:
     correlated.
 
     Attributes:
-        alpha: Strength of the L2 regularization penalty.
+        lam: Strength of the L2 regularization penalty.
         max_iter: Number of gradient descent iterations.
         lr: Learning rate used for gradient descent updates.
         w: Learned model parameters. The first value is the intercept, and the
@@ -20,11 +20,11 @@ class RidgeRegression:
     """
     def __init__(
         self,
-        alpha: float = 1.0,
+        lam: float = 1.0,
         max_iter: int = 10_000,
         lr: float = 0.01
     ):
-        self.alpha = float(alpha)
+        self.lam = float(lam)
         self.max_iter = int(max_iter)
         self.lr = float(lr)
         self.w = None
@@ -53,7 +53,7 @@ class RidgeRegression:
         error = x @ self.w - y
         gradient = (2 / n) * x.T @ error
 
-        regularization = 2 * self.alpha * self.w
+        regularization = 2 * self.lam * self.w
         regularization[0] = 0
 
         return gradient + regularization
