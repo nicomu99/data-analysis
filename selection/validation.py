@@ -11,7 +11,9 @@ def cross_validation(
     x: NDArray[np.floating],
     y: NDArray[np.floating],
     scoring_fn: Callable,
-    k: int = 10
+    k: int = 10,
+    *,
+    probabilistic: bool = False
 ) -> np.floating:
     """Evaluate a model using k-fold cross-validation.
 
@@ -77,10 +79,17 @@ def cross_validation(
 
         model = model.fit(train_x, train_y)
         test_predictions = model.predict(test_x)
-        if isinstance(test_predictions, tuple):
-            test_predictions = test_predictions[0]
+        if probabilistic:
+            mean_y, cov_y = test_predictions
+            var_y = np.diag(cov_y)
+            fold_score = scoring_fn(mean_y, var_y, test_y)
+        else:
+            if isinstance(test_predictions, tuple):
+                mean_y = test_predictions[0]
+            else:
+                mean_y = test_predictions
+            fold_score = scoring_fn(mean_y, test_y)
 
-        fold_score = scoring_fn(test_predictions, test_y)
         scores.append(fold_score)
 
     return np.mean(scores)

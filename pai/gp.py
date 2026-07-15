@@ -201,7 +201,7 @@ class GP:
         self.x_train_ = x
 
         self.kernel_coef_ = np.linalg.inv(
-            self.kernel_(self.x_train_, self.x_train_) + self.sigma_n_ * np.eye(num_samples)
+            self.kernel_(self.x_train_, self.x_train_) + self.sigma_n_ ** 2 * np.eye(num_samples)
         )
         self.mu_coef_ = self.kernel_coef_ @ y
 
@@ -239,6 +239,10 @@ class GP:
             )
         y_kernel = self.kernel_(x, self.x_train_)
         mu = y_kernel @ self.mu_coef_
-        cov = y_kernel @ self.kernel_coef_ @ y_kernel.T
+        cov = (
+                self.kernel_(x, x)
+                - y_kernel @ self.kernel_coef_ @ y_kernel.T
+        )
+        cov += np.eye(len(x)) * self.sigma_n_ ** 2
 
         return mu, cov
