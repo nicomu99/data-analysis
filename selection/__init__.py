@@ -1,3 +1,5 @@
+"""Models provided by the selection package."""
+
 from .validation import cross_validation
 
 __all__ = [
