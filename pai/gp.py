@@ -10,14 +10,24 @@ class RBF:
         h: Length-scale parameter controlling how quickly similarity decreases
             with distance. Must be greater than zero.
     """
-    def __init__(self, h: float = 1.0):
+    def __init__(self, h: float = 1.0, num_features: int = 1000):
         """Initialize the radial basis function kernel.
 
         Args:
             h: Length-scale parameter controlling the kernel width. Must be
                 greater than zero.
+            num_features: If the kernel is approximated, this is the number of
+                fourier transform features.
         """
-        self.h_ = h ** 2
+        if h <= 0:
+            raise ValueError("h must be greater than zero.")
+
+        self.h_ = float(h)
+        self.num_features_ = num_features
+        self.approximate_ = True
+
+        self.w_ = None
+        self.b_ = None
 
     def __call__(
         self,
@@ -40,9 +50,40 @@ class RBF:
         dist = np.linalg.norm(x[:, None, :] - y[None, :, :], axis=2) ** 2
         return np.exp(-dist / self.h_)
 
+    def fit_features(self, input_dim: int) -> None:
+        """Sample random Fourier feature parameters.
+
+        Args:
+            input_dim: Number of dimensions in each input sample.
+
+        Returns:
+            A tuple containing:
+                - Frequencies with shape
+                  ``(input_dim, num_features)``.
+                - Random phases with shape ``(num_features,)``.
+        """
+        self.w_ = (
+            np.sqrt(2) / self.h_
+            * np.random.randn(input_dim, self.num_features_)
+        )
+        self.b_ = 2 * np.pi * np.random.rand(self.num_features_)
+
+    def transform(self, x: np.ndarray) -> np.ndarray:
+        input_dim = x.shape[1]
+        if self.w_ is None or self.b_ is None:
+            self.fit_features(input_dim)
+
+        return (
+            np.sqrt(2 / self.num_features_)
+            * np.cos(x @ self.w_ + self.b_)
+        )
+
 
 class Linear:
     """Linear kernel."""
+    def __init__(self):
+        self.approximate_ = False
+
     def __call__(
         self,
         x: np.ndarray,
@@ -79,6 +120,7 @@ class Exponential:
                 greater than zero.
         """
         self.h_ = h
+        self.approximate_ = False
 
     def __call__(
         self,
@@ -137,8 +179,11 @@ class GP:
     def __init__(
         self,
         kernel: str = "rbf",
+        *,
         sigma_n: float = 0.1,
-        h: float = 1
+        h: float = 1,
+        approximate: bool = False,
+        num_features: int = 100
     ):
         """Initialize the Gaussian process model.
 
@@ -149,12 +194,17 @@ class GP:
                 non-negative.
             h: Length-scale parameter used by the RBF and exponential kernels.
                 Must be greater than zero.
+            approximate: Whether to approximate the kernel using random fourier
+                features. Can only be applied for shift-invariant kernels.
+                Defaults to False.
+            num_features: If the kernel is to be approximated, this is the
+                number of fourier features. Defaults to 100.
 
         Raises:
             ValueError: If the specified kernel is unknown.
         """
         _kernel_map = {
-            "rbf": RBF(h),
+            "rbf": RBF(h, num_features),
             "linear": Linear(),
             "exponential": Exponential(h)
         }
@@ -166,6 +216,10 @@ class GP:
         self.kernel_coef_ = None
         self.mu_coef_ = None
         self.x_train_ = None
+        self.z_train_ = None
+        self.approximate_ = approximate
+        if not self.kernel_.approximate_ and self.approximate_:
+            self.approximate_ = False
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> "GP":
         """Fit the Gaussian Processes.
@@ -200,8 +254,13 @@ class GP:
 
         self.x_train_ = x
 
+        if self.approximate_ and self.kernel_.approximate_:
+            self.z_train_ = self.kernel_.transform(x)
+            # TODO
+        else:
+            kernel_matrix = self.kernel_(self.x_train_, self.x_train_)
         self.kernel_coef_ = np.linalg.inv(
-            self.kernel_(self.x_train_, self.x_train_) + self.sigma_n_ ** 2 * np.eye(num_samples)
+            kernel_matrix + self.sigma_n_ ** 2 * np.eye(num_samples)
         )
         self.mu_coef_ = self.kernel_coef_ @ y
 
@@ -237,6 +296,7 @@ class GP:
                 f"x must contain {expected_features} features, "
                 f"but received {x.shape[1]}."
             )
+
         y_kernel = self.kernel_(x, self.x_train_)
         mu = y_kernel @ self.mu_coef_
         cov = (
