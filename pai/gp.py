@@ -256,13 +256,17 @@ class GP:
 
         if self.approximate_ and self.kernel_.approximate_:
             self.z_train_ = self.kernel_.transform(x)
-            # TODO
+            self.kernel_coef_ = np.linalg.inv(
+                np.dot(self.z_train_.T, self.z_train_)
+                + self.sigma_n_ ** 2 * np.eye(self.z_train_.shape[1])
+            )
+            self.mu_coef_ = self.kernel_coef_ @ self.z_train_.T @ y
         else:
             kernel_matrix = self.kernel_(self.x_train_, self.x_train_)
-        self.kernel_coef_ = np.linalg.inv(
-            kernel_matrix + self.sigma_n_ ** 2 * np.eye(num_samples)
-        )
-        self.mu_coef_ = self.kernel_coef_ @ y
+            self.kernel_coef_ = np.linalg.inv(
+                kernel_matrix + self.sigma_n_ ** 2 * np.eye(num_samples)
+            )
+            self.mu_coef_ = self.kernel_coef_ @ y
 
         return self
 
@@ -297,13 +301,22 @@ class GP:
                 f"but received {x.shape[1]}."
             )
 
-        y_kernel = self.kernel_(x, self.x_train_)
-        mu = y_kernel @ self.mu_coef_
-        cov = (
-                self.kernel_(x, x)
-                - y_kernel @ self.kernel_coef_ @ y_kernel.T
-        )
-        cov = (cov + cov.T) / 2
-        cov += np.eye(len(x)) * self.sigma_n_ ** 2
+        if self.approximate_:
+            z_kernel = self.kernel_.transform(x)
+            mu = z_kernel @ self.mu_coef_
+            cov = self.sigma_n_ ** 2 * (
+                 z_kernel @ self.kernel_coef_ @ z_kernel.T
+            )
+            cov = (cov + cov.T) / 2
+            cov += np.eye(len(x)) * self.sigma_n_ ** 2
+        else:
+            y_kernel = self.kernel_(x, self.x_train_)
+            mu = y_kernel @ self.mu_coef_
+            cov = (
+                    self.kernel_(x, x)
+                    - y_kernel @ self.kernel_coef_ @ y_kernel.T
+            )
+            cov = (cov + cov.T) / 2
+            cov += np.eye(len(x)) * self.sigma_n_ ** 2
 
         return mu, cov
