@@ -37,6 +37,8 @@ def cross_validation(
         scoring_fn: Function that receives the predicted and true target values
             and returns a numeric score.
         k: Number of cross-validation folds.
+        probabilistic: Boolean flag that decides whether the scoring function
+            is probabilistic or not.
 
     Returns:
         The mean score across all folds.

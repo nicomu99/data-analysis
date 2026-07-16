@@ -243,6 +243,7 @@ class GP:
                 self.kernel_(x, x)
                 - y_kernel @ self.kernel_coef_ @ y_kernel.T
         )
+        cov = (cov + cov.T) / 2
         cov += np.eye(len(x)) * self.sigma_n_ ** 2
 
         return mu, cov
