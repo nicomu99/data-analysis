@@ -3,6 +3,7 @@
 from .bayesian_logistic_regression import bayesian_logistic_vi
 from .bayesian_logistic_regression import bayesian_log_reg_laplace
 from .blr import BLR
+from .bnn_dropout import BNNDropout
 from .bnn_la import BNNLA
 from .bnn_mcmc import BNNMCMC
 from .bnn_vi import BNNVI
@@ -15,6 +16,7 @@ __all__ = [
     "bayesian_log_reg_laplace",
     "bayesian_logistic_vi",
     "BLR",
+    "BNNDropout",
     "BNNLA",
     "BNNMCMC",
     "BNNVI",
