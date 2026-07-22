@@ -7,6 +7,7 @@ from .bnn_dropout import BNNDropout
 from .bnn_la import BNNLA
 from .bnn_mcmc import BNNMCMC
 from .bnn_vi import BNNVI
+from .deep_ensembles import DeepEnsemble
 from .gp import GP
 from .mcmc import metropolis_hastings
 from .mcmc import ising_model
@@ -20,6 +21,7 @@ __all__ = [
     "BNNLA",
     "BNNMCMC",
     "BNNVI",
+    "DeepEnsemble",
     "GP",
     "metropolis_hastings",
     "ising_model",
